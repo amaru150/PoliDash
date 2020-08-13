@@ -97,69 +97,56 @@ def state_import():
         else:
             print("Error! cannot create the database connection.")
 
+    #Request and store as dictionaries data from nysenate Bills, Committee, and Members Api
     api_key = 'sTeeVu0CD2BFGFOhTOuyBn3OnGH6Wtqq'
     session_year = 2019
     politician = {}
     legislation = {}
 
-    def list_politicians(chamber,delta,limit):
-        for year in range (2009,curent_year):
-            req = requests.get(f'http://legislation.nysenate.gov/api/3/members/{year}/{chamber}?full=true&limit={limit}&key={api_key}')
-            resp = req.json()
-            offsetEnd = resp['offsetEnd']
+    #Parse data from nysenate Bills, Committee, and Members Api
+    def parse_nysenate(api,chamber,limit):
+        start_year = 2011 if api == 'committees' else 2009
+        chamber = '' if api == 'bills' else "/"+chamber
+        deytuh = {}
+
+        for year in range (start_year,curent_year):
+            resp= requests.get(f'http://legislation.nysenate.gov/api/3/{api}/{year}{chamber}?full=true&limit={limit}&key={api_key}').json()
+            
             if (resp['success'] == 1):
+                offsetEnd = resp['offsetEnd']
                 total_pages = math.ceil(resp['total'] / limit)
                 for page in range (1,2):
-                    req = requests.get(f'http://legislation.nysenate.gov/api/3/members/{year}/{chamber}?full=true&offset={offsetEnd+1}full=true&key={api_key}')
-                    resp = req.json()
-                    for members_ct in range(1,limit):
-                        member = {}
-                        items = resp['result']['items'][members_ct]
-                        for field in list(items):
-                            content = items.get(field)
-                            primarykey = items.get('memberId')
-                            data = unpack_nests(field,content)
-                            member.update(data)
-                            politician.update(
-                                {primarykey: member}
-                            )
-   
-    list_politicians('senate')
-    print(politician)
-    print(list(politician[384]))
+                    resp= requests.get(f'http://legislation.nysenate.gov/api/3/{api}/{year}{chamber}?full=true&offset={offsetEnd+1}&limit={limit}&key={api_key}').json()
+                    if resp['responseType'] != 'empty list':
+                        for i in range(0,limit):
+                            container = {}
+                            items = resp['result']['items'][i]
+                            print(i)
+                            for field in list(items):
+                                content = items.get(field)
+                                primarykey = items.get('memberId')
+                                data = unpack_nests(field,content)
+                                container.update(data)
+                        deytuh.update(
+                            {primarykey: container}
+                        )
+        return deytuh
 
-    def add_politicians():
-        list_politicians('assembly',delta)
-        list_politicians('senate',delta)
-        create_connection('db')
+    #Loops and stores data from all apis and chambers
+    def grab_nysenate():
+        api = ['members','committees','bills']
+        chamber = ['senate','assembly']
+        limit = 3
+        container = {}
 
-
-
-   def state_bills(delta,limit):
-        for year in range (2009,curent_year):
-            req = requests.get(f'http://legislation.nysenate.gov/api/3/bills/{year}?limit={limit}&full=true&key={api_key}')
-            resp = req.json()
-            offsetEnd = resp['offsetEnd']
-            if (resp['success'] == 1):
-                total_pages = math.ceil(resp['total'] / limit)
-                for page in range (1,total_pages):
-                    req = requests.get(f'http://legislation.nysenate.gov/api/3/bills/{year}?limit={limit}&offset={offsetEnd+1}full=true&key={api_key}')
-                    resp = req.json()
-                    for bills in range (1,limit):
-                        bill = {}
-                        items = resp['result']['items'][i]
-                        for field in list(items):
-                            content = items.get(field)
-                            primarykey = items.get('basePrintNo')
-                            data = unpack_nests(field,content)
-                            bill.update(data)
-                            legislation.update(
-                                {primarykey: bill}
-                            )
-
+        for apis in api:
+            for chambers in chamber:
+                container.update(
+                        {apis: parse_nysenate(apis,chambers,limit)}
+                    )
+        print(container)
+    grab_nysenate()
     
-
-    state_bills(delta,10)
 
 state_import()
 
