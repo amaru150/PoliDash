@@ -147,24 +147,33 @@ def state_import():
         print(container)
     grab_nysenate()
     
-
 state_import()
+  
+def propub_import():
+    api_key = 'a819EVguXs3g0g2reDwgWy1hd5RWY6QOH6ubf82t'
 
-    #Persons
-    
-    #Legislation
+    def parse_pro(congress,chamber):
+        header = {'X-API-Key': api_key}
+        resp = requests.get(f'https://api.propublica.org/congress/v1/{congress}/{chamber}/members.json',headers=header).json()
+        members = resp['results'][0]['members']
+        container = {}
+        deytuh = {}
 
-#Import State Congressional Persons, Legislation into Database
+        #generalize later
+        for reps in members:
+            for field in list(reps):
+                content = reps.get(field)
+                primarykey = reps.get('id')
+                data = unpack_nests(field,content)
+                container.update(data)
+            deytuh.update(
+                {primarykey: container}
+            )
+        return deytuh
 
-    #API Calls
-   # def state_import():
-    #Persons
-    
-    #Legislation
+    def member_full(memberid):
 
-#Import Federal congressional Persons, Legislation into Database
-    #API Calls
 
-    #Persons
-    
-    #Legislation
+    print(parse_pro(116,'house'))
+
+propub_import()

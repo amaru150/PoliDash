@@ -87,8 +87,23 @@ def propub_import():
     def parse_pro(congress,chamber):
         header = {'X-API-Key': api_key}
         resp = requests.get(f'https://api.propublica.org/congress/v1/{congress}/{chamber}/members.json',headers=header).json()
-        print(resp)
+        members = resp['results'][0]['members']
+        container = {}
+        deytuh = {}
 
-    parse_pro(116,'house')
+        #generalize later
+        for reps in members:
+            for field in list(reps):
+                content = reps.get(field)
+                primarykey = reps.get('id')
+                data = unpack_nests(field,content)
+                container.update(data)
+            deytuh.update(
+                {primarykey: container}
+            )
+        return deytuh
+
+
+    print(parse_pro(116,'house'))
 
 propub_import()
