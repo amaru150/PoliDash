@@ -1,7 +1,9 @@
-import requests
 import json
+import requests
 import math
 import sqlite3
+import csv
+import math
 from sqlite3 import Error
 from datetime import datetime
 
@@ -30,50 +32,35 @@ def create_table(conn, sql):
 curent_year = datetime.today().year
 delta = curent_year - 2009
 
-#JSON handling
-"""def unpack_nests(field,content):
-    data = {}
-    if isinstance(content,dict): 
-        for subfield in content:
-            data.update({subfield: content.get(subfield)})
-            
-    elif isinstance(content,list):
-        for items in content:
-            for subfield in items:
-                data.update({subfield: content.get(subfield)})
-
-    else:
-        data.update({field: content}) 
-    #print(type(data))
-    return data"""
-
-
+#Flattens nested list, and outputs into given container
 def unpack_nests(input_container,primarykey,output_container):
-            for items in container: #For lists in Dictionary element
-                values = {}
-                key = ""
+    for items in input_container: #For lists in Dictionary element
+        values = {}
+        key = ""
 
-                for field in list(items): #For each field in list element
-                    content = items.get(field)
-                    key = items.get(primarykey)
-                    data = {}
-                    if isinstance(content,dict): 
-                        for subfield in content:
-                            data.update({subfield: content.get(subfield)})
-            
-                    elif isinstance(content,list):
-                        for items in content:
-                            for subfield in items:
-                                data.update({subfield: content.get(subfield)})
+        for field in list(items): #For each field in list element
+            content = items.get(field)
+            key = items.get(primarykey)
+            data = {}
+            if isinstance(content,dict): 
+                for subfield in content:
+                    data.update({subfield: content.get(subfield)})
+    
+            elif isinstance(content,list):
+                for items in content:
+                    for subfield in items:
+                        data.update({subfield: content.get(subfield)})
 
-                    else:
-                        data.update({field: content})
+            else:
+                data.update({field: content})
 
-                    values.update(data)
-                output_container.update(
-                {primarykey: container}
-                )
-        return output_container
+            values.update(data)
+        output_container.update(
+        {primarykey: input_container}
+        )
+    return output_container
+
+#Breadth-first search
 
 #API Calls
 def state_import():
@@ -178,27 +165,55 @@ def state_import():
   
 def propub_import():
     api_key = 'a819EVguXs3g0g2reDwgWy1hd5RWY6QOH6ubf82t'
+    header = {'X-API-Key': api_key}
 
-    def parse_pro(congress,chamber):
-        header = {'X-API-Key': api_key}
+    def members(congress,chamber):
         resp = requests.get(f'https://api.propublica.org/congress/v1/{congress}/{chamber}/members.json',headers=header)
         resp = resp.json()
         members = resp['results'][0]['members']
-        container = {}
+        deytuh = {}
+        
+        print(unpack_nests(members,"id",deytuh))
+            
+    #members(116,'house')
+
+
+    def billsByMember(memberid):
+        resp = requests.get(f'https://api.propublica.org/congress/v1/members/{memberid}/bills/introduced.json',headers=header).json()
+        num_results = resp['results'][0]['num_results']
+        offset = 0
         deytuh = {}
 
-        #generalize later
-        for reps in members:
-            for field in list(reps):
-                content = reps.get(field)
-                primarykey = reps.get('id')
-                data = unpack_nests(field,content)
+        for i in range(0,math.ceil(num_results/20)):
+            resp = requests.get(f'https://api.propublica.org/congress/v1/members/{memberid}/bills/introduced.json?{offset}',headers=header).json()
+            bills = resp['results'][0]['bills']
+            col = []
+
+            unpack_nests(bills,"bill_id",deytuh)
+        print(deytuh)
+        
+
+    print(billsByMember('A000373'))
+
+    def votesById(congress,id):
+        resp = requests.get(f"https://api.propublica.org/congress/v1/{congress}/{id}/hr502.json",headers=header)
+        resp = resp.json()
+        results = resp['results'][0]
+        votes = resp['results'][0]['votes']
+        container = {}      
+        deytuh = {}
+
+        for actions in votes:
+            for items in actions:
+                content = actions.get(items)
+                primarykey = results.get('bill_id')
+                data = unpack_nests(items,content)
                 container.update(data)
             deytuh.update(
                 {primarykey: container}
             )
-        return deytuh
 
-    print(parse_pro(116,'house'))
+        return deytuh
+ 
 
 propub_import()

@@ -103,6 +103,14 @@ def propub_import():
             )
         return deytuh
 
+    def member_full(memberid):
+        header = {'X-API-Key': api_key}
+        resp = requests.get(f'https://api.propublica.org/congress/v1/{congress}/{chamber}/members.json',headers=header).json()
+        results = resp['results'][0]
+        roles = results[]
+        container = {}
+        deytuh = {}
+        
 
     print(parse_pro(116,'house'))
 
